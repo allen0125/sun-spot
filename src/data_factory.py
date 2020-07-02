@@ -4,15 +4,9 @@ import tensorflow as tf
 from tensorflow.data.experimental import AUTOTUNE
 import datetime
 
-# 定义Tensorboard log地址，配置callback函数
-log_dir="/home/ps/Projects/tensorflow-test/logs/fit/" + datetime.datetime.now(
-    ).strftime("%Y%m%d-%H%M%S")
-tensorboard_callback = tf.keras.callbacks.TensorBoard(
-    log_dir=log_dir, histogram_freq=1)
 
 # 训练集及测试集地址
-# train_data_root_orig = '/home/ps/Projects/tensorflow-test/data/test/'
-# test_data_root_orig = '/home/ps/Projects/tensorflow-test/data/train/'
+
 train_data_root_orig = '/home/ps/Projects/data/pre/continuum/'
 test_data_root_orig = '/home/ps/Projects/data/pre/continuum/'
 
@@ -166,64 +160,9 @@ def get_ds(data_root_orig, batch_size=32):
     train_paths, train_labels, test_paths, test_labels = split_train_test_dataset(all_image_paths, all_image_labels)
     print("训练数据量", len(train_paths))
     print("验证数据量", len(test_paths))
-    # """
-    # 完成ds计算
-    # """    
-    # path_ds = tf.data.Dataset.from_tensor_slices(all_image_paths)
-    # print(path_ds)
-    # image_ds = path_ds.map(
-    #     load_and_preprocess_image, num_parallel_calls=AUTOTUNE)
-    # label_ds = tf.data.Dataset.from_tensor_slices(
-    #     tf.cast(all_image_labels, tf.int64))
-    # image_label_ds = tf.data.Dataset.zip((image_ds, label_ds))
 
-    # # 设置一个和数据集大小一致的 shuffle buffer size（随机缓冲区大小）以保证数据
-    # # 被充分打乱。
-    # # 当模型在训练的时候，`prefetch` 使数据集在后台取得 batch。
-    # ds = image_label_ds.cache()
-    # ds = ds.apply(
-    #     tf.data.experimental.shuffle_and_repeat(buffer_size=image_count))
-    # ds = ds.batch(BATCH_SIZE).prefetch(buffer_size=AUTOTUNE)
-    # steps_per_epoch=tf.math.ceil(image_count/BATCH_SIZE).numpy()
-    # return ds, steps_per_epoch
     ds, dstep, _ = make_dataset(train_paths, train_labels, batch_size)
     validation_ds, vstep, validation_all_ds = make_dataset(test_paths, test_labels, batch_size)
     return ds, dstep, validation_ds, vstep, validation_all_ds
 
 ds, dstep, validation_ds, vstep, validation_all_ds = get_ds(train_data_root_orig)
-# validation_ds, vstep = get_ds(test_data_root_orig)
-
-
-# it = iter(validation_ds.take(vstep))
-# next(it)
-# all_images = list()
-# all_labels = list()
-# # all_images.set_shape([None, 500, 500, 3])
-# for i,(images,labels) in enumerate(it):
-#     all_images.append(images)
-#     all_labels.append(labels)
-
-    # print(type(images))
-#     print(images[0].shape)
-#     all_images += images
-#     all_labels += labels
-# print(all_images)
-# print(all_labels)
-# for i in validation_all_ds:
-#     print(i[0].shape)
-#     print(i[1])
-
-
-def get_ds(data_root_orig, batch_size=32):
-    """
-    输入图片地址，batch size，返回dataset数据集
-
-    """
-    data_root = pathlib.Path(data_root_orig)
-    all_image_paths = list(data_root.glob('*/*'))
-    all_image_paths = [str(path) for path in all_image_paths]
-
-    path_ds = tf.data.Dataset.from_tensor_slices(all_image_paths)
-    ds.batch(BATCH_SIZE).prefetch(buffer_size=AUTOTUNE)
-
-    return ds

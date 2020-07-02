@@ -71,6 +71,6 @@ with open('result.txt', 'a') as txt_file:
         result = model.predict(image_data)
         predict_index = np.argmax(result) + 1
         image_id = image_path.split("/")[-1].split(".")[0].split("_")[-1]
-        print(predict_index)
         line = image_id + ' ' + str(predict_index) + '\n'
+        print(line)
         txt_file.write(line)

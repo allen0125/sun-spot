@@ -65,7 +65,7 @@ class Metrics(tf.keras.callbacks.Callback):
         return
 
 
-log_dir="/home/ps/Projects/tensorflow-test/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
+log_dir="/home/ps/Projects/sunspot/logs/fit/" + datetime.datetime.now().strftime("%Y%m%d-%H%M%S")
 tensorboard_callback = tf.keras.callbacks.TensorBoard(log_dir=log_dir, histogram_freq=1)
 
 # 输入->卷积层1（5*5*32）->池化层->卷积层2（5*5*64）
