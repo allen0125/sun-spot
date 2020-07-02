@@ -95,7 +95,7 @@ def get_ds(data_root_orig):
     ds = ds.batch(BATCH_SIZE).prefetch(buffer_size=AUTOTUNE)
     return ds
 
-ds = get_ds(train_data_root_orig)
+# ds = get_ds(train_data_root_orig)
 validation_ds = get_ds(test_data_root_orig)
 
 # mobile_net = tf.keras.applications.MobileNetV2(input_shape=(192, 192, 3), include_top=False)
@@ -139,3 +139,17 @@ validation_ds = get_ds(test_data_root_orig)
 # model.fit(ds, epochs=500, steps_per_epoch=500,
 #           validation_data=validation_ds, validation_steps=100,
 #           callbacks=[tensorboard_callback])
+
+
+
+
+
+
+# 在开始计时之前
+# 取得单个 batch 来填充 pipeline（管道）（填充随机缓冲区）
+it = iter(validation_ds.take(validation_steps))
+next(it)
+
+for i,(images,labels) in enumerate(it):
+    print(images, labels)
+    print("-----------------------------")

@@ -4,7 +4,7 @@
 # Description: 用于测试Tensorflow OpenCV 处理数据的脚本
 # sys package
 # import os
-from multiprocessing import Process
+# from multiprocessing import Process
 # import unittest
 
 # # thread package
@@ -116,12 +116,13 @@ from multiprocessing import Process
 
 import os
 import re
+from multiprocessing import Process
 from matplotlib import pyplot as plt
 from astropy.io import fits
 import numpy as np
 
-path ='/home/ps/Projects/data/trainset/'
-prepath='/home/ps/Projects/data/pre/'
+path ='/home/ps/Projects/data/test_input/'
+prepath='/home/ps/Projects/data/test_png/'
 
 Filelist=[]
 typelist=['continuum','magnetogram']
@@ -167,4 +168,7 @@ def multi_trans_data():
     for p in process_list:
         p.join()
 
-multi_trans_data()
+
+if __name__ == '__main__':
+    multi_trans_data()
+    print("test")

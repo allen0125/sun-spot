@@ -58,6 +58,7 @@ def get_image_paths_labels(data_root_orig):
     print("label names: ", label_names)
     label_to_index = dict(
         (name, index) for index, name in enumerate(label_names))
+    print("!!!!!!!!!!!!!*************** Label Index is : ", label_to_index)
     all_image_labels = [label_to_index[pathlib.Path(path).parent.name]
                         for path in all_image_paths]
     
@@ -84,17 +85,31 @@ def split_train_test_dataset(all_image_paths, all_image_labels):
     
     train_points_days = dict()
     test_points_days = dict()
+
+    less_points_temp_list = list()
     
     for key in points_watch_days.keys():
         points_watch_days[key].sort()
+        # 划分观测数据大于4天的数据
         if len(points_watch_days[key]) > 4:
             test_days = points_watch_days[key][1::3]
             train_days = [point for point in points_watch_days[key] if point not in test_days]
             train_points_days[key] = train_days
             test_points_days[key] = test_days
-        # else:
-        #     test_days = points_watch_days[key]
-        #     test_points_days[key] = test_days
+        # 完成观测天数少于4天的数据划分
+        else:
+            less_points_temp_list.append(key)
+
+    less_test_points = random.sample(
+        less_points_temp_list, int(len(less_points_temp_list) * 0.3))
+    print("less test points num: ", len(less_test_points))
+    print("less points num", len(less_points_temp_list))
+    for key in less_test_points:
+        test_points_days[key] = points_watch_days[key]
+    for key in less_points_temp_list:
+        if key not in less_test_points:
+            train_days = points_watch_days[key]
+            train_points_days[key] = train_days
 
     for image_index, image_path in enumerate(all_image_paths):
         image_name = pathlib.Path(image_path).name
@@ -133,7 +148,7 @@ def make_dataset(image_paths, image_labels, batch_size=32):
         tf.data.experimental.shuffle_and_repeat(buffer_size=image_count))
     ds = ds.batch(BATCH_SIZE).prefetch(buffer_size=AUTOTUNE)
     steps_per_epoch=tf.math.ceil(image_count/BATCH_SIZE).numpy()
-    return ds, steps_per_epoch
+    return ds, steps_per_epoch, image_label_ds
 
 
 def get_ds(data_root_orig, batch_size=32):
@@ -171,9 +186,44 @@ def get_ds(data_root_orig, batch_size=32):
     # ds = ds.batch(BATCH_SIZE).prefetch(buffer_size=AUTOTUNE)
     # steps_per_epoch=tf.math.ceil(image_count/BATCH_SIZE).numpy()
     # return ds, steps_per_epoch
-    ds, dstep = make_dataset(train_paths, train_labels, batch_size)
-    validation_ds, vstep = make_dataset(test_paths, test_labels, batch_size)
-    return ds, dstep, validation_ds, vstep
+    ds, dstep, _ = make_dataset(train_paths, train_labels, batch_size)
+    validation_ds, vstep, validation_all_ds = make_dataset(test_paths, test_labels, batch_size)
+    return ds, dstep, validation_ds, vstep, validation_all_ds
 
-ds, dstep, validation_ds, vstep = get_ds(train_data_root_orig)
+ds, dstep, validation_ds, vstep, validation_all_ds = get_ds(train_data_root_orig)
 # validation_ds, vstep = get_ds(test_data_root_orig)
+
+
+# it = iter(validation_ds.take(vstep))
+# next(it)
+# all_images = list()
+# all_labels = list()
+# # all_images.set_shape([None, 500, 500, 3])
+# for i,(images,labels) in enumerate(it):
+#     all_images.append(images)
+#     all_labels.append(labels)
+
+    # print(type(images))
+#     print(images[0].shape)
+#     all_images += images
+#     all_labels += labels
+# print(all_images)
+# print(all_labels)
+# for i in validation_all_ds:
+#     print(i[0].shape)
+#     print(i[1])
+
+
+def get_ds(data_root_orig, batch_size=32):
+    """
+    输入图片地址，batch size，返回dataset数据集
+
+    """
+    data_root = pathlib.Path(data_root_orig)
+    all_image_paths = list(data_root.glob('*/*'))
+    all_image_paths = [str(path) for path in all_image_paths]
+
+    path_ds = tf.data.Dataset.from_tensor_slices(all_image_paths)
+    ds.batch(BATCH_SIZE).prefetch(buffer_size=AUTOTUNE)
+
+    return ds
