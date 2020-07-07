@@ -1,3 +1,7 @@
+## 比赛地址：
+
+https://tianchi.aliyun.com/competition/entrance/531803/introduction
+
 ## 项目结构：
 - src：源码目录
 - src/model：基于Keras Applications的卷积神经网络model，与杨博士提出使用的
