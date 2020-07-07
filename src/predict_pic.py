@@ -7,11 +7,14 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Conv2D, MaxPool2D
 from tensorflow.keras.layers import Dense, Flatten, Dropout
 from tensorflow.keras import regularizers
+from tensorflow.keras.applications import NASNetLarge
+from tensorflow.keras.models import Model
+from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
 import numpy as np
 
 # from data_factory import ds, dstep, validation_ds, vstep
 
-def preprocess_image(image, image_size=500, channels=3):
+def preprocess_image(image, image_size=331, channels=3):
     """
     按照image_size大小 resize image，将image正则化到[0, 1]区间
     return: 处理后的image图像
@@ -35,36 +38,53 @@ def load_and_preprocess_image(path):
 
 # 输入->卷积层1（5*5*32）->池化层->卷积层2（5*5*64）
 # ->池化层->卷积层3（5*5*128）->池化层->全连接层（128）->Max(3)
-model = Sequential()
-model.add(Conv2D(32, kernel_size=(5,5), bias_regularizer=regularizers.l2(1e-4), activation='relu', input_shape=(500, 500, 3)))
-model.add(MaxPool2D(pool_size=(2,2), strides=(2,2)))
-model.add(Conv2D(64, kernel_size=(5,5), bias_regularizer=regularizers.l2(1e-4), activation='relu'))
-model.add(MaxPool2D(pool_size=(2,2), strides=(2,2)))
-model.add(Conv2D(128, kernel_size=(5,5), bias_regularizer=regularizers.l2(1e-4), activation='relu'))
-model.add(MaxPool2D(pool_size=(2,2), strides=(2,2)))
-model.add(Flatten())
-model.add(Dropout(0.7))
-model.add(Dense(128,
-                kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4),
-                bias_regularizer=regularizers.l2(1e-4),
-                activity_regularizer=regularizers.l2(1e-5),
-                activation='relu'))
-model.add(Dropout(0.7))
-model.add(Dense(3, activation='softmax'))
-model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.00001),
-              loss='sparse_categorical_crossentropy',
-              metrics=['accuracy'])
+# model = Sequential()
+# model.add(Conv2D(32, kernel_size=(5,5), bias_regularizer=regularizers.l2(1e-4), activation='relu', input_shape=(500, 500, 3)))
+# model.add(MaxPool2D(pool_size=(2,2), strides=(2,2)))
+# model.add(Conv2D(64, kernel_size=(5,5), bias_regularizer=regularizers.l2(1e-4), activation='relu'))
+# model.add(MaxPool2D(pool_size=(2,2), strides=(2,2)))
+# model.add(Conv2D(128, kernel_size=(5,5), bias_regularizer=regularizers.l2(1e-4), activation='relu'))
+# model.add(MaxPool2D(pool_size=(2,2), strides=(2,2)))
+# model.add(Flatten())
+# model.add(Dropout(0.7))
+# model.add(Dense(128,
+#                 kernel_regularizer=regularizers.l1_l2(l1=1e-5, l2=1e-4),
+#                 bias_regularizer=regularizers.l2(1e-4),
+#                 activity_regularizer=regularizers.l2(1e-5),
+#                 activation='relu'))
+# model.add(Dropout(0.7))
+# model.add(Dense(3, activation='softmax'))
+# model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.00001),
+#               loss='sparse_categorical_crossentropy',
+#               metrics=['accuracy'])
 
-checkpoint_path = "training_bigger_than_4_0702/cp.ckpt"
-checkpoint_dir = os.path.dirname(checkpoint_path)
+# checkpoint_path = "training_bigger_than_4_0702/cp.ckpt"
 
+base_model = NASNetLarge(
+    include_top=False,
+    weights="imagenet"
+    )
+
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+# let's add a fully-connected layer
+x = Dense(1024, activation='relu')(x)
+x = Dropout(0.5)(x)
+x = Dense(512, activation='relu')(x)
+x = Dropout(0.5)(x)
+predictions = Dense(3, activation='softmax')(x)
+
+model = Model(inputs=base_model.input, outputs=predictions)
+
+# checkpoint_dir = os.path.dirname(checkpoint_path)
+checkpoint_path = "checkpoint/training_0706_all_data_nasnet/cp.ckpt"
 model.load_weights(checkpoint_path)
 
 data_root = pathlib.Path("/home/ps/Projects/data/test_png/continuum/")
 all_image_paths = list(data_root.glob('*/*'))
 all_image_paths = [str(path) for path in all_image_paths]
 print(all_image_paths)
-with open('result.txt', 'a') as txt_file:
+with open('result_0706.txt', 'a') as txt_file:
     for image_path in all_image_paths:
         image_data = load_and_preprocess_image(image_path)
         # print(type(image_data))

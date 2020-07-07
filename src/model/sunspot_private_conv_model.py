@@ -8,11 +8,12 @@ from tensorflow.keras.layers import Dense, Flatten, Dropout
 from tensorflow.keras import regularizers
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, recall_score, precision_score
+from sklearn.metrics import classification_report
 import numpy as np
 
-from data_factory import ds, dstep, validation_ds, vstep
+from data_factory import ds, dstep, validation_ds, vstep, validation_all_ds, all_data_ds, all_data_step
 
-checkpoint_path = "training_bigger_than_4_0702/cp.ckpt"
+checkpoint_path = "training_bigger_than_4_0702_all_data/cp.ckpt"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
 cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
@@ -36,32 +37,26 @@ class Metrics(tf.keras.callbacks.Callback):
         logs = logs or {}
         it = iter(self.validation_data.take(vstep))
         next(it)
-        _val_f1_list = list()
-        _val_recall_list = list()
-        _val_precision_list = list()
+        total_predict = np.array([])
+        total_targ = np.array([])
 
         for i,(images,labels) in enumerate(it):
-            # print(self.model.predict(images))
             val_predict = np.argmax(self.model.predict(images), -1)
-            # print(val_predict)
-            val_targ = labels
-            # print(val_targ)
+            val_targ = labels.numpy()
             if len(val_targ.shape) == 2 and val_targ.shape[1] != 1:
                 val_targ = np.argmax(val_targ, -1)
+            total_predict = np.concatenate((total_predict, val_predict),axis=0)
+            total_targ = np.concatenate((total_targ, val_targ),axis=0)
 
-            _val_f1 = f1_score(val_targ, val_predict, average='macro')
-            _val_f1_list.append(_val_f1)
-            _val_recall = recall_score(val_targ, val_predict, average='macro')
-            _val_recall_list.append(_val_recall)
-            _val_precision = precision_score(val_targ, val_predict, average='macro')
-            _val_precision_list.append(_val_precision)
-        _val_f1 = Get_Average(_val_f1_list)
-        _val_recall = Get_Average(_val_recall_list)
-        _val_precision = Get_Average(_val_precision_list)
-        logs['val_f1'] = Get_Average(_val_f1_list)
-        logs['val_recall'] = Get_Average(_val_recall_list)
-        logs['val_precision'] = Get_Average(_val_precision_list)
-        # print(" — val_f1: %f — val_precision: %f — val_recall: %f" % (_val_f1, _val_precision, _val_recall))
+        _val_f1 = f1_score(total_targ, total_predict, average='macro')
+        _val_recall = recall_score(total_targ, total_predict, average='macro')
+        _val_precision = precision_score(total_targ, total_predict, average='macro')
+        t = classification_report(total_targ, total_predict, target_names=["Alpha", "Beta", "BetaX"])
+        print("\n")
+        print(t)
+        logs['val_f1'] = _val_f1
+        logs['val_recall'] = _val_recall
+        logs['val_precision'] = _val_precision
         return
 
 
@@ -92,8 +87,8 @@ model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.00001),
               loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
 
-model.fit(ds, epochs=500, steps_per_epoch=dstep,
-          validation_data=validation_ds, validation_steps=vstep,
+model.fit(all_data_ds, epochs=500, steps_per_epoch=all_data_step,
+          validation_data=validation_ds, 
           callbacks=[tensorboard_callback,
                      Metrics(valid_data=validation_ds),
                      cp_callback,

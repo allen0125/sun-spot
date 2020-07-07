@@ -11,7 +11,7 @@ train_data_root_orig = '/home/ps/Projects/data/pre/continuum/'
 test_data_root_orig = '/home/ps/Projects/data/pre/continuum/'
 
 
-def preprocess_image(image, image_size=500, channels=3):
+def preprocess_image(image, image_size=331, channels=3):
     """
     按照image_size大小 resize image，将image正则化到[0, 1]区间
     return: 处理后的image图像
@@ -87,7 +87,9 @@ def split_train_test_dataset(all_image_paths, all_image_labels):
         # 划分观测数据大于4天的数据
         if len(points_watch_days[key]) > 4:
             test_days = points_watch_days[key][1::3]
-            train_days = [point for point in points_watch_days[key] if point not in test_days]
+            train_days = [
+                point for point in points_watch_days[
+                    key] if point not in test_days]
             train_points_days[key] = train_days
             test_points_days[key] = test_days
         # 完成观测天数少于4天的数据划分
@@ -109,10 +111,12 @@ def split_train_test_dataset(all_image_paths, all_image_labels):
         image_name = pathlib.Path(image_path).name
         point_info = image_name.split('.')[0]
         point_name, point_watch_day, _ = point_info.split('_')
-        if point_name in train_points_days.keys() and point_watch_day in train_points_days[point_name]:
+        if point_name in train_points_days.keys() and \
+        point_watch_day in train_points_days[point_name]:
             train_paths.append(image_path)
             train_labels.append(all_image_labels[image_index])
-        if point_name in test_points_days.keys() and point_watch_day in test_points_days[point_name]:
+        if point_name in test_points_days.keys() and \
+        point_watch_day in test_points_days[point_name]:
             test_paths.append(image_path)
             test_labels.append(all_image_labels[image_index])
 
@@ -147,7 +151,7 @@ def make_dataset(image_paths, image_labels, batch_size=32):
 
 def get_ds(data_root_orig, batch_size=32):
     """
-    输入图片地址，batch size，返回dataset数据集
+    输入图片地址，batch size，返回训练与验证dataset数据集
 
     """
     
@@ -157,12 +161,45 @@ def get_ds(data_root_orig, batch_size=32):
     # 计算所有image 数量
     image_count = len(all_image_paths)
     print("total image count: ", image_count)
-    train_paths, train_labels, test_paths, test_labels = split_train_test_dataset(all_image_paths, all_image_labels)
+    train_paths, train_labels, \
+    test_paths, test_labels = split_train_test_dataset(
+        all_image_paths, all_image_labels)
     print("训练数据量", len(train_paths))
     print("验证数据量", len(test_paths))
-
+    print("训练Alpha：", train_labels.count(0))
+    print("训练Beta：", train_labels.count(1))
+    print("训练Betax：", train_labels.count(2))
+    print("测试Alpha：", test_labels.count(0))
+    print("测试Beta：", test_labels.count(1))
+    print("测试Betax：", test_labels.count(2))
     ds, dstep, _ = make_dataset(train_paths, train_labels, batch_size)
-    validation_ds, vstep, validation_all_ds = make_dataset(test_paths, test_labels, batch_size)
+    validation_ds, vstep, validation_all_ds = make_dataset(
+        test_paths, test_labels, batch_size)
     return ds, dstep, validation_ds, vstep, validation_all_ds
 
-ds, dstep, validation_ds, vstep, validation_all_ds = get_ds(train_data_root_orig)
+
+def get_alldata_ds(data_root_orig, batch_size=32):
+    """
+    输入图片地址，batch size，返回所有数据dataset数据集
+
+    """
+
+    all_image_paths, all_image_labels = get_image_paths_labels(data_root_orig)
+
+    # 计算所有image 数量
+    image_count = len(all_image_paths)
+    print("total image count: ", image_count)
+    train_paths, train_labels, \
+    test_paths, test_labels = split_train_test_dataset(
+        all_image_paths, all_image_labels)
+    print("训练数据量", len(train_paths))
+    print("验证数据量", len(test_paths))
+    print("训练Alpha：", train_labels.count(0))
+    print("训练Beta：", train_labels.count(1))
+    print("训练Betax：", train_labels.count(2))
+    ds, dstep, _ = make_dataset(all_image_paths, all_image_labels, batch_size)
+    return ds, dstep
+
+with tf.device('/device:GPU:0'):
+    ds, dstep, validation_ds, vstep, validation_all_ds = get_ds(
+        train_data_root_orig)
