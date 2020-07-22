@@ -11,6 +11,7 @@ import tensorflow as tf
 from tensorflow.keras.applications import NASNetLarge
 from tensorflow.keras.models import Model
 from tensorflow.keras.layers import Dense, GlobalAveragePooling2D, Dropout
+from tensorflow.keras.utils import multi_gpu_model
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import f1_score, recall_score, precision_score
@@ -18,9 +19,11 @@ from sklearn.metrics import classification_report
 import numpy as np
 
 from data_factory import (
-    ds, dstep, validation_ds, vstep,
-    validation_all_ds
+    # ds, dstep, validation_ds, vstep,
+    # validation_all_ds
+    get_alldata_ds
 )
+ds, dstep = get_alldata_ds("/home/ps/Projects/data/pre/continuum/", 64)
 
 # 计算F1 Score
 class Metrics(tf.keras.callbacks.Callback):
@@ -49,8 +52,10 @@ class Metrics(tf.keras.callbacks.Callback):
 
         _val_f1 = f1_score(total_targ, total_predict, average='macro')
         _val_recall = recall_score(total_targ, total_predict, average='macro')
-        _val_precision = precision_score(total_targ, total_predict, average='macro')
-        t = classification_report(total_targ, total_predict, target_names=["Alpha", "Beta", "BetaX"])
+        _val_precision = precision_score(
+            total_targ, total_predict, average='macro')
+        t = classification_report(
+            total_targ, total_predict, target_names=["Alpha", "Beta", "BetaX"])
         print("\n")
         print(t)
         logs['val_f1'] = _val_f1
@@ -66,41 +71,40 @@ tensorboard_callback = tf.keras.callbacks.TensorBoard(
     log_dir=log_dir, histogram_freq=1)
 
 # checkpoint settings
-checkpoint_path = "checkpoint/training_0706_all_data_nasnet/cp.ckpt"
+checkpoint_path = "checkpoint/training_nasnet_alldata_continuum/cp.ckpt"
 checkpoint_dir = os.path.dirname(checkpoint_path)
 
 cp_callback = tf.keras.callbacks.ModelCheckpoint(filepath=checkpoint_path,
                                                  save_weights_only=True,
                                                  verbose=1)
-with tf.device('/device:GPU:0'):
-    base_model = NASNetLarge(
-        include_top=False,
-        weights="imagenet"
-        )
 
-    x = base_model.output
-    x = GlobalAveragePooling2D()(x)
-    # let's add a fully-connected layer
-    x = Dense(1024, activation='relu')(x)
-    x = Dropout(0.5)(x)
-    x = Dense(512, activation='relu')(x)
-    x = Dropout(0.5)(x)
-    predictions = Dense(3, activation='softmax')(x)
+base_model = NASNetLarge(
+    include_top=False,
+    weights="imagenet"
+    )
+for layer in base_model.layers:
+    layer.trainable = False
 
-    model = Model(inputs=base_model.input, outputs=predictions)
+x = base_model.output
+x = GlobalAveragePooling2D()(x)
+# let's add a fully-connected layer
+x = Dense(1024, activation='relu')(x)
+x = Dropout(0.5)(x)
+x = Dense(512, activation='relu')(x)
+x = Dropout(0.5)(x)
+predictions = Dense(3, activation='softmax')(x)
 
-    for layer in base_model.layers:
-        layer.trainable = False
+model = Model(inputs=base_model.input, outputs=predictions)
 
-    model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
-                loss='sparse_categorical_crossentropy',
-                metrics=['accuracy'])
+model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.0001),
+            loss='sparse_categorical_crossentropy',
+            metrics=['accuracy'])
 
-    # model.load_weights(checkpoint_path)
+# model.load_weights(checkpoint_path)
 
-    model.fit(ds, epochs=500, steps_per_epoch=dstep,
-            validation_data=validation_ds, validation_steps=vstep,
-            callbacks=[tensorboard_callback,
-                        Metrics(valid_data=validation_ds),
-                        #  cp_callback,
-                        ])
+model.fit(ds, epochs=50, steps_per_epoch=dstep,
+        # validation_data=validation_ds, validation_steps=vstep,
+        callbacks=[tensorboard_callback,
+                    # Metrics(valid_data=validation_ds),
+                   cp_callback,
+                  ])

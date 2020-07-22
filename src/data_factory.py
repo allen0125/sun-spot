@@ -7,18 +7,18 @@ import datetime
 
 # 训练集及测试集地址
 
-train_data_root_orig = '/home/ps/Projects/data/pre/continuum/'
-test_data_root_orig = '/home/ps/Projects/data/pre/continuum/'
+train_data_root_orig = '/home/ps/Projects/data/addweight_c0.9_png/'
+test_data_root_orig = '/home/ps/Projects/data/addweight_c0.9_png/'
 
 
-def preprocess_image(image, image_size=331, channels=3):
+def preprocess_image(image, image_size=224, channels=3):
     """
     按照image_size大小 resize image，将image正则化到[0, 1]区间
     return: 处理后的image图像
     """
     image = tf.image.decode_jpeg(image, channels=3)
     image = tf.image.resize(image, [image_size, image_size])
-    image /= 255.0  # normalize to [0,1] range
+    # image /= 255.0  # normalize to [0,1] range
 
     return image
 
@@ -55,7 +55,7 @@ def get_image_paths_labels(data_root_orig):
     print("!!!!!!!!!!!!!*************** Label Index is : ", label_to_index)
     all_image_labels = [label_to_index[pathlib.Path(path).parent.name]
                         for path in all_image_paths]
-    
+
     return all_image_paths, all_image_labels
 
 
@@ -76,12 +76,12 @@ def split_train_test_dataset(all_image_paths, all_image_labels):
         else:
             if point_watch_day not in points_watch_days[point_name]:
                 points_watch_days[point_name].append(point_watch_day)
-    
+
     train_points_days = dict()
     test_points_days = dict()
 
     less_points_temp_list = list()
-    
+
     for key in points_watch_days.keys():
         points_watch_days[key].sort()
         # 划分观测数据大于4天的数据
@@ -123,7 +123,7 @@ def split_train_test_dataset(all_image_paths, all_image_labels):
     return train_paths, train_labels, test_paths, test_labels
 
 
-def make_dataset(image_paths, image_labels, batch_size=32):
+def make_dataset(image_paths, image_labels, batch_size=64):
     """
     完成ds计算
     """
@@ -149,13 +149,13 @@ def make_dataset(image_paths, image_labels, batch_size=32):
     return ds, steps_per_epoch, image_label_ds
 
 
-def get_ds(data_root_orig, batch_size=32):
+def get_ds(data_root_orig, batch_size=64):
     """
     输入图片地址，batch size，返回训练与验证dataset数据集
 
     """
-    
-    
+
+
     all_image_paths, all_image_labels = get_image_paths_labels(data_root_orig)
 
     # 计算所有image 数量
@@ -178,7 +178,7 @@ def get_ds(data_root_orig, batch_size=32):
     return ds, dstep, validation_ds, vstep, validation_all_ds
 
 
-def get_alldata_ds(data_root_orig, batch_size=32):
+def get_alldata_ds(data_root_orig, batch_size=64):
     """
     输入图片地址，batch size，返回所有数据dataset数据集
 
@@ -188,18 +188,14 @@ def get_alldata_ds(data_root_orig, batch_size=32):
 
     # 计算所有image 数量
     image_count = len(all_image_paths)
-    print("total image count: ", image_count)
-    train_paths, train_labels, \
-    test_paths, test_labels = split_train_test_dataset(
-        all_image_paths, all_image_labels)
-    print("训练数据量", len(train_paths))
-    print("验证数据量", len(test_paths))
-    print("训练Alpha：", train_labels.count(0))
-    print("训练Beta：", train_labels.count(1))
-    print("训练Betax：", train_labels.count(2))
+
+    print("训练数据量", len(all_image_labels))
+    print("训练Alpha：", all_image_labels.count(0))
+    print("训练Beta：", all_image_labels.count(1))
+    print("训练Betax：", all_image_labels.count(2))
     ds, dstep, _ = make_dataset(all_image_paths, all_image_labels, batch_size)
     return ds, dstep
 
-with tf.device('/device:GPU:0'):
-    ds, dstep, validation_ds, vstep, validation_all_ds = get_ds(
-        train_data_root_orig)
+# with tf.device('/device:GPU:0'):
+ds, dstep, validation_ds, vstep, validation_all_ds = get_ds(
+    train_data_root_orig)

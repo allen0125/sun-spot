@@ -11,7 +11,7 @@ from sklearn.metrics import f1_score, recall_score, precision_score
 from sklearn.metrics import classification_report
 import numpy as np
 
-from data_factory import ds, dstep, validation_ds, vstep, validation_all_ds, all_data_ds, all_data_step
+from data_factory import ds, dstep, validation_ds, vstep, validation_all_ds
 
 checkpoint_path = "training_bigger_than_4_0702_all_data/cp.ckpt"
 checkpoint_dir = os.path.dirname(checkpoint_path)
@@ -87,9 +87,9 @@ model.compile(optimizer=tf.keras.optimizers.Adam(lr=0.00001),
               loss='sparse_categorical_crossentropy',
               metrics=['accuracy'])
 
-model.fit(all_data_ds, epochs=500, steps_per_epoch=all_data_step,
+model.fit(ds, epochs=500, steps_per_epoch=dstep,
           validation_data=validation_ds, 
           callbacks=[tensorboard_callback,
                      Metrics(valid_data=validation_ds),
-                     cp_callback,
+                    #  cp_callback,
                      ])
